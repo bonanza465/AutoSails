@@ -1,0 +1,10 @@
+﻿{
+        "name": "AutoSails",
+        "version_number": "1.0.0",
+        "website_url": "https://github.com/kerseb/AutoSails",
+        "description": "AutoSails automatically controls sails in Sailwind. It can hoist, lower, and trim sails based on wind conditions.",
+        "dependencies": [
+          "BepInEx-BepInExPack-5.4.2100",
+          "App24-SailwindModdingHelper-2.1.1"
+        ]
+      }
