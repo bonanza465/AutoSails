@@ -1,3 +1,9 @@
+## [1.1.0] - 2025-07-27
+
+### Added 
+- Mayor refactor, controller is now attatched to sail and not to winches. 
+- Added staysail and squaresail functionality
+
 ## [1.0.1] - 2025-07-24
 
 ### Fixed 

@@ -14,12 +14,14 @@ To use this mod, you need the following:
 * [BepInEx](https://github.com/BepInEx/BepInEx/releases) 
 * [SailwindModdingHelper by App24](https://thunderstore.io/c/sailwind/p/App24/SailwindModdingHelper/) 
 
-
 ## ⚠️ Important
 
-In its current state the mod can only control simple sails, i.e. gaffs, lateens and junk sails (sails which only have one winch control). Square and jib sails are currently not implemented.
+Can controll all types of sail, but will be lost if ship is stuck in iron.
 
 ## 🙏 Credits
 Much of the implementation was inspired by the SailInfo mod.
 
+## 🤝 Contributing
+
+We welcome and encourage contributions to AutoSails! Want to help improve AutoSails? Whether it’s art / assets (like crew members), ideas, or feedback—we’d love your input!
 
