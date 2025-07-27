@@ -1,38 +1,91 @@
 ﻿using HarmonyLib;
 using UnityEngine;
 using SailwindModdingHelper;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
+// using System.Diagnostics;
 
 
 namespace AutoSails
 {
     public class AutoSailsControlSail : MonoBehaviour
     {
-        public bool canControl = false; 
+
+        private Sail sail;
+        private RopeController hoistWinch;
+        private GPButtonRopeWinch hoistButton;
+        private List<GPButtonRopeWinch> angleButtons = [];
+        private Queue<float> sailAngles = new Queue<float>();
+        private const int maxSailAngles = 50;
+
+        public bool canControl = false;
         private PurchasableBoat boat;
-        private Sail sailComponent;
-        private GPButtonRopeWinch ropeWinch;
+        // private Sail sailComponent;
+        // private GPButtonRopeWinch ropeWinch;
         public bool hoistSails = false; // This is used to determine if the sails should be hoisted or not
+        public bool hoistSailsSquare = false;
+        public bool hoistSailsLateen = false;
+        public bool hoistSailsJunk = false;
+        public bool hoistSailsGaff = false;
+        public bool hoistSailsOther = false;
+        public bool hoistSailsStaysail = false;
+
         public bool trimSails = false; // This is used to determine if the sails should be trimmed or not
         public bool hoisted = false; // This is used to determine if the sails are hoisted or not
 
         // private string sailName;
         private float hoistingSpeed = 0.005f; // Speed at which the sails are hoisted
         private float trimmingSpeed = 0.0005f; // Speed at which the sails are hoisted
-                                       // float hoistSign = -1;  // This is used to determine the direction of the hoist, depending on the sail type
-                                       //TODO on some ships, the hoist Sign calculation does not work properly. Why?
-        private bool reverseReefing; 
-        private float trimDirection = 1f; // This is used to determine the direction of the trim
+                                               // float hoistSign = -1;  // This is used to determine the direction of the hoist, depending on the sail type
+                                               //TODO on some ships, the hoist Sign calculation does not work properly. Why?
+        private bool reverseReefing = false;
+        private float trimDirection = -1f; // This is used to determine the direction of the trim
         private float oldEfficiency = 1f;
         private int i = 0;
-        public void Awake()
+        private void Start()
         {
-            ropeWinch = GetComponentInParent<GPButtonRopeWinch>();
-            if (ropeWinch == null) return;
+
+            sail = GetComponent<Sail>();
+            if (!sail) return;
+
+            GPButtonRopeWinch[] allGPButtonRopeWinch = FindObjectsOfType<GPButtonRopeWinch>();
+            foreach (GPButtonRopeWinch button in allGPButtonRopeWinch)
+            {
+                if (button.rope)
+                {
+                    // Check for hoist winch
+                    if (button.rope is RopeControllerSailReef reefWinch && reefWinch.sail == sail)
+                    {
+                        hoistButton = button;
+                        hoistWinch = button.rope;
+                    }
+                    // Check for angle winch types
+                    else if (IsAngleWinch(button.rope, sail))
+                    {
+                        angleButtons.Add(button);
+                    }
+                }
+            }
+
+            reverseReefing = (bool)Traverse.Create(hoistWinch).Field("reverseReefing").GetValue();
+            boat = (PurchasableBoat)Traverse.Create(hoistButton).Field("boat").GetValue();
+
             GameEvents.OnPlayerInput += (_, __) =>
             {
                 if (AutoSailsMain.hoistSails.Value.IsDown())
                 {
                     hoistSails = !hoistSails;
+
+                    // for simplification, all sails use the same hotkey
+                    hoistSailsSquare = hoistSails;
+                    hoistSailsLateen = hoistSails;
+                    hoistSailsJunk = hoistSails;
+                    hoistSailsGaff = hoistSails;
+                    hoistSailsOther = hoistSails;
+                    hoistSailsStaysail = hoistSails;
+
+                    // UI elements, currently not in use to have max immersion
                     // if (hoistSails)
                     // {
                     //     NotificationUi.instance.ShowNotification("Hoist Sails!");
@@ -44,7 +97,8 @@ namespace AutoSails
                 }
                 if (AutoSailsMain.trimSails.Value.IsDown())
                 {
-                    trimSails = !trimSails; 
+                    trimSails = !trimSails;
+                    // UI elements, currently not in use to have max immersion
                     // if (trimSails)
                     // {
                     //     NotificationUi.instance.ShowNotification("Start trimming the sails!");
@@ -52,43 +106,55 @@ namespace AutoSails
                     // else
                     // {
                     //     NotificationUi.instance.ShowNotification("Stop trimming the sails!");
-                    // }   
+                    // }
                 }
             };
 
         }
-        // private int SailDegree()
-        // {   //gets the sailComponent in and returns the angle wiht the boat forward direction out out
 
-        //     if (sailTransform == null) sailTransform = sailComponent.transform;
-        //     if (boatTransform == null) boatTransform = sailComponent.shipRigidbody.transform;
+        private bool IsAngleWinch(RopeController winch, Sail sail)
+        {
+            var type = winch.GetType().Name;
+            // List of angle winch types
+            bool isAngleType =
+                type == "RopeControllerSailAngle" ||
+                type == "RopeControllerSailAngleJib" ||
+                type == "RopeControllerSailAngleSquare";
 
-        //     Vector3 boatVector = boatTransform.forward;    //boat direction
-        //     Vector3 sailVector = sailComponent.squareSail ? sailTransform.up : sailTransform.right; //sailComponent "direction" since squares are made differently we use the up direction for them, otherwise the -right direction (also known as left)
+            if (!isAngleType) return false;
+            var winchSail = (Sail)Traverse.Create(winch).Field("sail").GetValue();
+            return winchSail == sail;
+        }
 
-        //     int angle = Mathf.RoundToInt(Vector3.SignedAngle(boatVector, sailVector, Vector3.up)); //calculate the angle
+        private float SailDegree()
+        {   //gets the sailComponent in and returns the angle wiht the boat forward direction out out
 
-        //     angle = angle > 90 ? 180 - angle : angle; //keep it in a 0° to 90° angle
-        //     angle = angle < 0 ? -angle : angle; //keep it positive
-        //     return angle;
-        // }
+            Vector3 boatVector = boat.transform.forward;    //boat direction
+            Vector3 sailVector = sail.squareSail ? sail.transform.up : sail.transform.right; //sailComponent "direction" since squares are made differently we use the up direction for them, otherwise the -right direction (also known as left)
+
+            float angle = Vector3.SignedAngle(boatVector, sailVector, Vector3.up); //calculate the angle
+
+            // angle = angle > 90 ? 180 - angle : angle; //keep it in a 0° to 90° angle
+            // angle = angle < 0 ? -angle : angle; //keep it positive
+            return angle;
+        }
         private float SailEfficiency()
-        {   // Calculates the efficiency of a sailComponent trim (max is best)
+        {   // Calculates the efficiency of a sail trim (max is best)
 
-            //This is the force created by the sailComponent
-            // float unamplifiedForce = (float)unamplifiedForwardInfo.GetValue(sailComponent);
-            float unamplifiedForce = (float)Traverse.Create(sailComponent).Field("unamplifiedForwardForce").GetValue();
-            //This is the total force the wind applies to the sailComponent. This is also the maximum force forward the sailComponent can generate on the boat.
+            //This is the force created by the sail
+            // float unamplifiedForce = (float)unamplifiedForwardInfo.GetValue(sail);
+            float unamplifiedForce = (float)Traverse.Create(sail).Field("unamplifiedForwardForce").GetValue();
+            //This is the total force the wind applies to the sailComponent. This is also the maximum force forward the sail can generate on the boat.
             float totalWindForce = GetTotalForce();
             float efficiency = unamplifiedForce / totalWindForce * 100f;
 
             return efficiency;
         }
         private float SailInefficiency()
-        {   // Calculates the percentage of sideway force on a sailComponent (min is best)
+        {   // Calculates the percentage of sideway force on a sail (min is best)
             // float unamplifiedSideInfo = (float)unamplifiedSideInfo.GetValue(sailComponent);
-            float unamplifiedSideInfo = (float)Traverse.Create(sailComponent).Field("unamplifiedSidewayForce").GetValue();
-            //This is the total force the wind applies to the sailComponent. This is also the maximum force forward the sailComponent can generate on the boat.
+            float unamplifiedSideInfo = (float)Traverse.Create(sail).Field("unamplifiedSidewayForce").GetValue();
+            //This is the total force the wind applies to the sail. This is also the maximum force forward the sail can generate on the boat.
             float totalWindForce = GetTotalForce();
 
             float inefficiency = Mathf.Abs(unamplifiedSideInfo / totalWindForce * 100f);
@@ -104,37 +170,25 @@ namespace AutoSails
                 return eff;
             }
             float ineff = 100 - SailInefficiency();
-            float comb = (3*eff + ineff) / 4f;
+            float comb = (3 * eff + ineff) / 4f;
 
             return comb;
         }
         private float GetTotalForce()
         {   // avoid using reflections when possible to get totalWindForce
-            float applied = sailComponent.appliedWindForce;
+            float applied = sail.appliedWindForce;
 
             if (applied == 0f)
             {   //use reflections to get totalWindForce instead
-                return (float) Traverse.Create(sailComponent).Field("totalWindForce").GetValue();
+                return (float)Traverse.Create(sail).Field("totalWindForce").GetValue();
             }
 
-            return applied / sailComponent.GetCapturedForceFraction();
+            return applied / sail.GetCapturedForceFraction();
         }
         private void FixedUpdate()
         {
-            if (ropeWinch == null) return;
-            if (ropeWinch.rope is RopeControllerSailReef)
-            {
-                // TODO if I call this in Awake, it will not work properly.
-                // Maybe because the rope is not properly initialized yet
-                reverseReefing = (bool)Traverse.Create(ropeWinch.rope).Field("reverseReefing").GetValue();
-            }
-            
-            
-        }
-        private void Update()
-        {
-            if (ropeWinch == null) return;
-            if (boat == null) boat = (PurchasableBoat)Traverse.Create(ropeWinch).Field("boat").GetValue();
+            if (!sail || !hoistWinch || !hoistButton) return;
+            if (boat == null) return;
             // user can control the sail if player is on boat, or is currently not any boat and last boat is boat
             if (GameState.currentBoat != null)
             {
@@ -148,225 +202,279 @@ namespace AutoSails
             {
                 canControl = false;
             }
-            /*
-            // TODO various field displayed on the winches for debug
-            // if (ropeWinch.IsLookedAt() || ropeWinch.IsStickyClicked() || ropeWinch.IsCliked())
+
+        }
+        private void Update()
+        {
+            // set steady wind conditions for testing
+            // Wind.currentWind = new Vector3(1f, 0f, -0.25f).normalized * 9f;
+            if (!sail || !hoistWinch || !hoistButton) return;
+
+            // Overlays for debug
+            // if (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked())
             // {
-            // ropeWinch.description = "";
-            // ropeWinch.description += $"\n GameState.currentBoat: {GameState.currentBoat}";
-            // Transform boat = GetComponentInParent<PurchasableBoat>().transform;
-            // PurchasableBoat boat = GetComponentInParent<PurchasableBoat>();//.transform;
-            // ropeWinch.description += $"\n boat: {boat}";
-            // ropeWinch.description += $"\n root: {GameState.currentBoat}";
-            // ropeWinch.description += $"\n GetChild: {GameState.currentBoat.GetChild(0)}";
-            // ropeWinch.description += $"\n GetChild: {GetComponentInParent<PurchasableBoat>()}"; 
-            // ropeWinch.description += $"\n ropeWinch.boat: {Traverse.Create(ropeWinch).Field("boat").GetValue()}";
-            // PurchasableBoat boat = (PurchasableBoat)Traverse.Create(ropeWinch).Field("boat").GetValue();
-            // ropeWinch.description += $"\n ropeWinch.boat: {boat}";
-            // ropeWinch.description += $"\n ropeWinch.boat.transform: {boat.transform}";
-            // ropeWinch.description += $"\n GameState.currentBoat: {GameState.currentBoat}";
-            // ropeWinch.description += $"\n equals?: {boat.transform == GameState.currentBoat}";
-
-            // SaveableObject saveable = (SaveableObject)Traverse.Create(boat).Field("saveable").GetValue();
-            // GameObject purchaseUI = (GameObject)Traverse.Create(boat).Field("purchaseUI").GetValue();
-            // ropeWinch.description += $"\n saveable: {saveable}";
-            // ropeWinch.description += $"\n purchaseUI: {purchaseUI}";
-            // ropeWinch.description += $"\n GameState.currentShipyard: {GameState.currentShipyard}";
-            // ropeWinch.description += $"\n GameState.currentBoat: {GameState.currentBoat}";
-
-            // Transform cboat = GameState.currentBoat;
-            // Transform boat = ((PurchasableBoat)Traverse.Create(ropeWinch).Field("boat").GetValue()).transform;
-            // ropeWinch.description += $"\n equals: {cboat == boat}";
-            // ropeWinch.description += $"\n name: {cboat.name} || {boat.name}";
-            // ropeWinch.description += $"\n gameObject: {cboat.gameObject} || {boat.gameObject}";
-            // ropeWinch.description += $"\n tag: {cboat.tag} || {boat.tag}";
-            // ropeWinch.description += $"\n transform: {cboat.transform} || {boat.transform}";
-            // ropeWinch.description += $"\n hideFlags: {cboat.hideFlags} || {boat.hideFlags}";
-            // ropeWinch.description += $"\n GetInstanceID: {cboat.GetInstanceID()} || {boat.GetInstanceID()}";
-            // ropeWinch.description += $"\n parent: {cboat.parent} || {boat.parent}";
-            // ropeWinch.description += $"\n position: {cboat.position} || {boat.position}";
-            // ropeWinch.description += $"\n equals: {cboat.parent == boat}";
-            // ropeWinch.description += $"\n equals: {cboat.IsChildOf(boat)}";
-
-            // PurchasableBoat boat = (PurchasableBoat)Traverse.Create(ropeWinch).Field("boat").GetValue();
-            // SaveableObject saveable = (SaveableObject)Traverse.Create(boat).Field("saveable").GetValue();
-            // GameObject purchaseUI = (GameObject)Traverse.Create(boat).Field("purchaseUI").GetValue();
-            // ropeWinch.description += $"\n isPurchased: {boat.isPurchased()}";
-            // // ropeWinch.description += $"\n purchaseUI.activeSelf: {purchaseUI.activeSelf}"; // if bought it has no pochase UI anymore
-            // CleanableObject  saveCleanable = (CleanableObject) Traverse.Create(saveable).Field("saveCleanable").GetValue();
-            // ropeWinch.description += $"\n saveCleanable: {saveCleanable}";
-            // int sceneIndex = (int) Traverse.Create(saveable).Field("sceneIndex").GetValue();
-            // ropeWinch.description += $"\n sceneIndex: {sceneIndex}";
-            // bool registered = (bool) Traverse.Create(saveable).Field("registered").GetValue();
-            // ropeWinch.description += $"\n registered: {registered}";
-            // bool loaded = (bool) Traverse.Create(saveable).Field("loaded").GetValue();
-            // ropeWinch.description += $"\n loaded: {loaded}";
-            // bool extraSetting = (bool) Traverse.Create(saveable).Field("extraSetting").GetValue();
-            // ropeWinch.description += $"\n extraSetting: {extraSetting}";
-            // float extraValue = (float) Traverse.Create(saveable).Field("extraValue").GetValue();
-            // ropeWinch.description += $"\n extraValue: {extraValue}";
-            // Texture2D extraTexture = (Texture2D) Traverse.Create(saveable).Field("extraTexture").GetValue();
-            // ropeWinch.description += $"\n extraTexture: {extraTexture}";
-            // SaveableBoatCustomization customization = (SaveableBoatCustomization) Traverse.Create(saveable).Field("customization").GetValue();
-            // ropeWinch.description += $"\n customization: {customization}";
-            // BoatLocalItems localItems = (BoatLocalItems) Traverse.Create(saveable).Field("localItems").GetValue();
-            // ropeWinch.description += $"\n localItems: {localItems}";
-            // BoatDamage damage = (BoatDamage) Traverse.Create(saveable).Field("damage").GetValue();
-            // ropeWinch.description += $"\n damage: {damage}";
-
-            //     ropeWinch.description += $"\n currentLength: {ropeWinch.rope.currentLength}";
-            //     ropeWinch.description += $"\n ropeWinch.rope: {ropeWinch.rope}";
-
-            //     // debug for RopeControllerSailAngle
-            //     ropeWinch.description += $"\n trimSails: {trimSails}";
-            //     ropeWinch.description += $"\n trimSails: {trimSails}";
-
-            //     // debug for RopeControllerSailReef
-            //     // ropeWinch.description += $"\n hoistSails: {hoistSails}";
-            //     // ropeWinch.description += $"\n rope.changed: {ropeWinch.rope.changed}";
-            //     // ropeWinch.description += $"\n rope.reverseReefing: {(bool)Traverse.Create(ropeWinch.rope).Field("reverseReefing").GetValue()}";
-            //     // ropeWinch.description += $"\n reverseReefing here: {reverseReefing}";
-            //     // ropeWinch.description += $"\n rope.lastLength: {(float)Traverse.Create(ropeWinch.rope).Field("lastLength").GetValue()}";
-            //     // debug for RopeControllerSailAngleSquare
-            // ropeWinch.description += $"\n CombinedEfficiency: {Mathf.Round(CombinedEfficiency())}";
-            // ropeWinch.description += $"\n SailEfficiency: {Mathf.Round(SailEfficiency())}";
-            // ropeWinch.description += $"\n SailInefficiency: {Mathf.Round(SailInefficiency())}";
+            //     hoistButton.description = "";
+            //     hoistButton.description += $"\n Sail: {sail}";
+            //     hoistButton.description += $"\n hoistWinch: {hoistWinch}";
+            //     hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
+            //     hoistButton.description += $"\n canControl: {canControl}";
+            //     hoistButton.description += $"\n Sail name: {sail.sailName}";
+            //     hoistButton.description += $"\n squareSail: {sail.squareSail}";
+            //     hoistButton.description += $"\n junkType: {sail.junkType}";
+            //     hoistButton.description += $"\n SailCategory: {sail.category}";
+            //     hoistButton.description += $"\n reverseReefing: {reverseReefing}";
             // }
-            */
-            if (ropeWinch.rope == null) return;
-            if (
-                sailComponent == null
-                &&
-                (ropeWinch.rope is RopeControllerSailAngle
-                || ropeWinch.rope is RopeControllerSailAngleSquare
-                || ropeWinch.rope is RopeControllerSailAngleJib)
-            )
+            if (hoistSails && canControl)
             {
-                sailComponent = (Sail)Traverse.Create(ropeWinch.rope).Field("sail").GetValue();
+                PerformHoist(reverseReefing ^ hoisted); // XOR to determine direction
             }
-            if (ropeWinch.rope is RopeControllerSailReef)
+
+            // Overlays for debug
+            // foreach (GPButtonRopeWinch winchButton in angleButtons)
+            // {
+            //     winchButton.description = "";
+            //     winchButton.description += $"\n SailDegree: {SailDegree()}";
+            //     winchButton.description += $"\n windSide: {windSide}";
+            //     winchButton.description += $"\n winchButton.rope.currentLength: {winchButton.rope.currentLength}";
+            //     winchButton.description += $"\n CombinedEfficiency(): {CombinedEfficiency():F2}";
+            //     winchButton.description += $"\n SailEfficiency(): {SailEfficiency():F2}";
+            //     winchButton.description += $"\n SailInefficiency(): {SailInefficiency():F2}";
+            //     winchButton.description += $"\n ApparentWind: {Vector3.SignedAngle(-boat.transform.forward, sail.apparentWind, Vector3.up)}";
+            //     winchButton.description += $"\n AngleStandardDeviation: {AngleStandardDeviation():F4}";
+            // }
+
+            if (trimSails && canControl)
             {
-                if (hoistSails && canControl)
+                string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
+                if (sail.category is SailCategory.junk || sail.category is SailCategory.gaff || sail.category is SailCategory.lateen)
                 {
-                    if (hoisted)
+                    PrimitiveSailControl(angleButtons[0]);
+                }
+                else if (sail.category is SailCategory.staysail)
+                {
+                    AddAngle(SailDegree());
+                    foreach (GPButtonRopeWinch winchButton in angleButtons)
                     {
-                        if (reverseReefing)
+                        if (
+                            (((RopeControllerSailAngleJib)winchButton.rope).side == RopeControllerSailAngleJib.JibWinch.left)
+                            && (windSide == "starboard")
+                            )
                         {
-                            HoistUp();
+                            PrimitiveSailControl(winchButton);
+                        }
+                        else if (
+                            (((RopeControllerSailAngleJib)winchButton.rope).side == RopeControllerSailAngleJib.JibWinch.right)
+                            && (windSide == "port")
+                            )
+                        {
+                            PrimitiveSailControl(winchButton);
                         }
                         else
                         {
-                            HoistDown();
+                            LoosenSheetRope(winchButton); // quickly loosen
                         }
                     }
-                    else
+                }
+                else if (sail.category is SailCategory.square)
+                {
+                    AddAngle(SailDegree());
+                    foreach (GPButtonRopeWinch winchButton in angleButtons)
                     {
-                        if (reverseReefing)
+                        // check if square sail is in the right orientation?
+                        if ((windSide == "port") && AngleMean() < 90)
                         {
-                            HoistDown();
+                            // loosen left, tighten right
+                            if (((RopeControllerSailAngleSquare)winchButton.rope).side == RopeControllerSailAngleSquare.WinchSide.left)
+                            {
+                                LoosenSheetRope(winchButton);
+                            }
+                            else
+                            {
+                                TightenSheetRope(winchButton);
+                            }
+                        }
+                        else if ((windSide == "starboard") && AngleMean() > 90)
+                        {
+                            // loosen right, tighten left
+                            if (((RopeControllerSailAngleSquare)winchButton.rope).side == RopeControllerSailAngleSquare.WinchSide.left)
+                            {
+                                TightenSheetRope(winchButton);
+                            }
+                            else
+                            {
+                                LoosenSheetRope(winchButton);
+                            }
+                        }
+                        else if (
+                                (((RopeControllerSailAngleSquare)winchButton.rope).side == RopeControllerSailAngleSquare.WinchSide.left)
+                                && (windSide == "port")
+                                )
+                        {
+                            winchButton.description += "\nleft";
+                            PrimitiveSailControl(winchButton);
+                        }
+                        else if (
+                            (((RopeControllerSailAngleSquare)winchButton.rope).side == RopeControllerSailAngleSquare.WinchSide.right)
+                            && (windSide == "starboard")
+                            )
+                        {
+                            PrimitiveSailControl(winchButton);
+                            winchButton.description += "right";
                         }
                         else
                         {
-                            HoistUp();
+                            if (winchButton.rope.currentLength < 1f)
+                            {
+                                Traverse.Create(winchButton).Field("currentInput").SetValue(-5f);
+                                winchButton.ApplyRotation();
+                                winchButton.rope.currentLength += 4 * trimmingSpeed;
+                            }
+                            else
+                            {
+                                winchButton.rope.currentLength = 1f;
+                            }
+
+
                         }
                     }
                 }
             }
-            else if (ropeWinch.rope is RopeControllerSailAngle)
-            {
-                // PurchasableBoat boat = (PurchasableBoat)Traverse.Create(ropeWinch).Field("boat").GetValue();
-                if (trimSails && canControl)
+        }
+        private void PrimitiveSailControl(GPButtonRopeWinch button)
+        {
+            // only visual effect of turning winch wheel
+            Traverse.Create(button).Field("currentInput").SetValue(-trimDirection * 5f);
+            button.ApplyRotation();
+            // trim logic
+            if (i == 20)
+            {   //every 20 frames, we check the efficiency and trim the sailComponent
+                i = 0;
+                if (oldEfficiency > CombinedEfficiency())
                 {
-                    // only visual effect of turning winch wheel
-                    Traverse.Create(ropeWinch).Field("currentInput").SetValue(-trimDirection * 5f);
-                    ropeWinch.ApplyRotation();
-                    // trim logic
-                    if (i == 20)
-                    {   //every 20 frames, we check the efficiency and trim the sailComponent
-                        i = 0;
-                        if (oldEfficiency > CombinedEfficiency())
-                        {
-                            trimDirection *= -1f; // if the efficiency is worse, reverse the trim direction
-                        }
-                        oldEfficiency = CombinedEfficiency();
-                    }
-
-                    if (CombinedEfficiency() == 0f)
-                    {
-                        // if the efficiency is 0, we need to tighten the sail
-                        trimDirection = -1f;
-                        i = 0;
-                    }
-                    if (ropeWinch.rope.currentLength >= 1f)
-                    {
-                        ropeWinch.rope.currentLength -= trimmingSpeed;
-
-                    }
-                    else if (ropeWinch.rope.currentLength <= 0f)
-                    {
-                        ropeWinch.rope.currentLength += trimmingSpeed;
-                    }
-                    else
-                    {
-
-                        ropeWinch.rope.currentLength += trimDirection * trimmingSpeed;
-                    }
-                    ropeWinch.rope.changed = true; // mark the rope as changed such that changes are applied
-                    i++;
+                    trimDirection *= -1f; // if the efficiency is worse, reverse the trim direction
+                }
+                oldEfficiency = CombinedEfficiency();
+            }
+            if (sail.category == SailCategory.staysail)
+            {
+                if (AngleStandardDeviation() > .5)
+                {
+                    trimDirection = -1f;
+                    i = 0;
+                    TightenSheetRope(button); // quickly tighten
+                    return;
                 }
             }
-            else if (ropeWinch.rope is RopeControllerSailAngleSquare)
+            else if (sail.category == SailCategory.square)
             {
-                if (trimSails && canControl)
+                if (CombinedEfficiency() == 0)
                 {
-                    // TODO: logic for steerig square sails goes here    
+                    trimDirection = 1f;
+                    i = 0;
                 }
             }
-            else if (ropeWinch.rope is RopeControllerSailAngleJib)
+            else // gaff, junk, lateen sails (but also other, and I dont know what these are)
             {
-                if (trimSails && canControl)
+                if (CombinedEfficiency() == 0f)
                 {
-                    // TODO logic for steering jib sails goes here
+                    // if the efficiency is 0, we need to tighten the sail
+                    trimDirection = -1f;
+                    i = 0;
+                    TightenSheetRope(button); // quickly tighten
+                    return;
                 }
+            }
+
+            if (button.rope.currentLength > 1f)
+            {
+                // button.rope.currentLength -= trimmingSpeed;
+                button.rope.currentLength = 1f;
+
+            }
+            else if (button.rope.currentLength < 0f)
+            {
+                // button.rope.currentLength += trimmingSpeed;
+                button.rope.currentLength = 0f;
+            }
+            else
+            {
+
+                button.rope.currentLength += trimDirection * trimmingSpeed;
+            }
+            button.rope.changed = true; // mark the rope as changed such that changes are applied
+            i++;
+        }
+
+        private void LoosenSheetRope(GPButtonRopeWinch button)
+        {
+            if (button.rope.currentLength > 1f)
+            {
+                // button.rope.currentLength -= trimmingSpeed;
+                button.rope.currentLength = 1f;
+            }
+            else
+            {
+                button.rope.currentLength += 4 * trimmingSpeed;
+            }
+            button.rope.changed = true;
+        }
+        private void TightenSheetRope(GPButtonRopeWinch button)
+        {
+            if (button.rope.currentLength < 0f)
+            {
+                // button.rope.currentLength -= trimmingSpeed;
+                button.rope.currentLength = 0f;
+
+            }
+            else
+            {
+                button.rope.currentLength -= 4 * trimmingSpeed;
+
+            }
+            button.rope.changed = true;
+        }
+
+        private void PerformHoist(bool up)
+        {
+            float prevLength = hoistWinch.currentLength;
+
+            // Visual winch wheel rotation
+            float input = up ? 25f : -25f;
+            Traverse.Create(hoistButton).Field("currentInput").SetValue(input);
+            hoistButton.ApplyRotation();
+
+            // Adjust hoist length
+            hoistWinch.currentLength += up ? -hoistingSpeed : hoistingSpeed;
+
+            // Clamp and stop condition
+            if (hoistWinch.currentLength > 1f) hoistWinch.currentLength = 1f;
+            if (hoistWinch.currentLength < 0f) hoistWinch.currentLength = 0f;
+
+            if (Mathf.Approximately(prevLength, hoistWinch.currentLength) ||
+                hoistWinch.currentLength == 0f || hoistWinch.currentLength == 1f)
+            {
+                hoistSails = false;
+                hoisted = !hoisted;
             }
         }
-        private void HoistDown()
+        private void AddAngle(float angle)
         {
-            if (ropeWinch.rope.currentLength > 0)
-            {
-                // only visual effect of turning winch wheel
-                Traverse.Create(ropeWinch).Field("currentInput").SetValue(25f);
-                ropeWinch.ApplyRotation();
-                // hoist logic
-                float previousLength = ropeWinch.rope.currentLength;
-                ropeWinch.rope.currentLength -= hoistingSpeed; // Hoist the sailComponent
-                if (previousLength == ropeWinch.rope.currentLength || ropeWinch.rope.currentLength < 0f)
-                {
-                    ropeWinch.rope.currentLength = 0f; // Prevents the sail from getting stuck at 0.005f
-                    hoistSails = false;
-                    hoisted = !hoisted;
-                }
-            }
+            sailAngles.Enqueue(angle);
+            while (sailAngles.Count > maxSailAngles)
+                sailAngles.Dequeue();
         }
-        private void HoistUp()
+        float AngleStandardDeviation()
         {
-            if (ropeWinch.rope.currentLength < 1)
-            {
-                // only visual effect of turning winch wheel
-                Traverse.Create(ropeWinch).Field("currentInput").SetValue(-25f);
-                ropeWinch.ApplyRotation();
-                // hoist logic
-                float previousLength = ropeWinch.rope.currentLength;
-                ropeWinch.rope.currentLength += hoistingSpeed; // Hoist the sailComponent
-                if (previousLength == ropeWinch.rope.currentLength || ropeWinch.rope.currentLength > 1f)
-                {
-                    ropeWinch.rope.currentLength = 1f; // Prevents the sail from getting stuck at 0.005f
-                    hoistSails = false;
-                    hoisted = !hoisted;
-                }
-                
-            }
+            if (sailAngles.Count == 0) return 0f;
 
+            float mean = AngleMean();
+            float sumSq = sailAngles.Sum(v => (v - mean) * (v - mean));
+            return Mathf.Sqrt(sumSq / sailAngles.Count);
+        }
+        float AngleMean()
+        {
+            if (sailAngles.Count == 0) return 0f;
+            return sailAngles.Average();
         }
     }
 }
