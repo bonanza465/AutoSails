@@ -239,6 +239,7 @@ namespace AutoSails
             // Overlays for debug
             // foreach (GPButtonRopeWinch winchButton in angleButtons)
             // {
+            //     string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
             //     winchButton.description = "";
             //     winchButton.description += $"\n SailDegree: {SailDegree()}";
             //     winchButton.description += $"\n windSide: {windSide}";
@@ -248,14 +249,37 @@ namespace AutoSails
             //     winchButton.description += $"\n SailInefficiency(): {SailInefficiency():F2}";
             //     winchButton.description += $"\n ApparentWind: {Vector3.SignedAngle(-boat.transform.forward, sail.apparentWind, Vector3.up)}";
             //     winchButton.description += $"\n AngleStandardDeviation: {AngleStandardDeviation():F4}";
+            //     winchButton.description += $"\n Windangle: {Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up):F4}";
             // }
-
             if (trimSails && canControl)
-            {
-                string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
+                {
+                    string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
                 if (sail.category is SailCategory.junk || sail.category is SailCategory.gaff || sail.category is SailCategory.lateen)
                 {
-                    PrimitiveSailControl(angleButtons[0]);
+                    if (AutoSailsMain.autoSailsAutoJibe.Value)
+                    {
+                        // wind from wrong side, pull main sheet tight. Hopefully sail degree works for all ships in the same way
+                        if (
+                            (((windSide == "starboard") && (SailDegree() < -5))
+                            ||
+                            ((windSide == "port") && (SailDegree() > 5)))
+                            &&
+                            (Mathf.Abs(SailDegree()) > 8)
+                            &&
+                            (Mathf.Abs(Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up)) > 8)
+                        )
+                        {
+                            TightenSheetRope(angleButtons[0]);
+                        }
+                        else
+                        {
+                            PrimitiveSailControl(angleButtons[0]);
+                        }
+                    }
+                    else
+                    {
+                        PrimitiveSailControl(angleButtons[0]);
+                    }
                 }
                 else if (sail.category is SailCategory.staysail)
                 {
@@ -345,7 +369,7 @@ namespace AutoSails
                         }
                     }
                 }
-            }
+                }
         }
         private void PrimitiveSailControl(GPButtonRopeWinch button)
         {

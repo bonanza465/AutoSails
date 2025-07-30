@@ -3,6 +3,7 @@
 ### Added 
 - Added Issue #3, Text Feedback for Sail and Trim Commands (needs to be enabled in config)
 - Added Issue #4, Make Sail and Trim States Per-Boat Rather than Global
+- Added Issue #5, automatic jibe with gaffs, lateens, junksails (can be disabled in config, might not work on all ships)
  
 ## [1.1.0] - 2025-07-27
 

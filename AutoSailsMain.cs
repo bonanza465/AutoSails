@@ -14,8 +14,8 @@ namespace AutoSails {
         internal static new ManualLogSource Logger;
         internal static ConfigEntry<KeyboardShortcut> hoistSails;
         internal static ConfigEntry<KeyboardShortcut> trimSails;
-        internal static ConfigEntry<bool> autoSailsUI;  
-
+        internal static ConfigEntry<bool> autoSailsUI;
+        internal static ConfigEntry<bool> autoSailsAutoJibe;
         public void Awake()
         {
             // Plugin startup logic
@@ -23,7 +23,7 @@ namespace AutoSails {
             hoistSails = Config.Bind("Hotkeys", "Hoist Sails Key", new KeyboardShortcut(KeyCode.I));
             trimSails = Config.Bind("Hotkeys", "Trim Sails Key", new KeyboardShortcut(KeyCode.J));
             autoSailsUI = Config.Bind("UI", "autoSailsUI", false, "Enables or disables the AutoSails UI. Requires restarting the game.");
-
+            autoSailsAutoJibe = Config.Bind("Feature", "autoSailsAutoJibe", true, "Enables or disables the automatic jibing. Automatic jibing makes it hard to sail on a run and might not work on all ships. Requires restarting the game.");
 
             //PATCHES INFO
             Harmony harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
