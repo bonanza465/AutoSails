@@ -1,3 +1,8 @@
+## [1.2.1] - 2025-07-30
+
+### Fixed 
+- Forgot to remove the debug overlay on winches
+
 ## [1.2.0] - 2025-07-30
 
 ### Added 
