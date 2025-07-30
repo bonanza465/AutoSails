@@ -73,7 +73,7 @@ namespace AutoSails
 
             GameEvents.OnPlayerInput += (_, __) =>
             {
-                if (AutoSailsMain.hoistSails.Value.IsDown())
+                if (AutoSailsMain.hoistSails.Value.IsDown() && canControl)
                 {
                     hoistSails = !hoistSails;
 
@@ -95,7 +95,7 @@ namespace AutoSails
                     //     NotificationUi.instance.ShowNotification("Lower Sails!");
                     // }   
                 }
-                if (AutoSailsMain.trimSails.Value.IsDown())
+                if (AutoSailsMain.trimSails.Value.IsDown() && canControl)
                 {
                     trimSails = !trimSails;
                     // UI elements, currently not in use to have max immersion
