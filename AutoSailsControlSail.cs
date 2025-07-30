@@ -237,20 +237,20 @@ namespace AutoSails
             }
 
             // Overlays for debug
-            foreach (GPButtonRopeWinch winchButton in angleButtons)
-            {
-                string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
-                winchButton.description = "";
-                winchButton.description += $"\n SailDegree: {SailDegree()}";
-                winchButton.description += $"\n windSide: {windSide}";
-                winchButton.description += $"\n winchButton.rope.currentLength: {winchButton.rope.currentLength}";
-                winchButton.description += $"\n CombinedEfficiency(): {CombinedEfficiency():F2}";
-                winchButton.description += $"\n SailEfficiency(): {SailEfficiency():F2}";
-                winchButton.description += $"\n SailInefficiency(): {SailInefficiency():F2}";
-                winchButton.description += $"\n ApparentWind: {Vector3.SignedAngle(-boat.transform.forward, sail.apparentWind, Vector3.up)}";
-                winchButton.description += $"\n AngleStandardDeviation: {AngleStandardDeviation():F4}";
-                winchButton.description += $"\n Windangle: {Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up):F4}";
-            }
+            // foreach (GPButtonRopeWinch winchButton in angleButtons)
+            // {
+            //     string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
+            //     winchButton.description = "";
+            //     winchButton.description += $"\n SailDegree: {SailDegree()}";
+            //     winchButton.description += $"\n windSide: {windSide}";
+            //     winchButton.description += $"\n winchButton.rope.currentLength: {winchButton.rope.currentLength}";
+            //     winchButton.description += $"\n CombinedEfficiency(): {CombinedEfficiency():F2}";
+            //     winchButton.description += $"\n SailEfficiency(): {SailEfficiency():F2}";
+            //     winchButton.description += $"\n SailInefficiency(): {SailInefficiency():F2}";
+            //     winchButton.description += $"\n ApparentWind: {Vector3.SignedAngle(-boat.transform.forward, sail.apparentWind, Vector3.up)}";
+            //     winchButton.description += $"\n AngleStandardDeviation: {AngleStandardDeviation():F4}";
+            //     winchButton.description += $"\n Windangle: {Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up):F4}";
+            // }
             if (trimSails  && hoisted)
             {
                 string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
