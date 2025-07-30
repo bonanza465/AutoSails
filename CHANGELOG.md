@@ -1,3 +1,9 @@
+## [1.2.0] - 2025-07-30
+
+### Added 
+- Added Issue #3, Text Feedback for Sail and Trim Commands (needs to be enabled in config)
+- Added Issue #4, Make Sail and Trim States Per-Boat Rather than Global
+ 
 ## [1.1.0] - 2025-07-27
 
 ### Added 

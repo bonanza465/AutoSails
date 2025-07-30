@@ -85,28 +85,35 @@ namespace AutoSails
                     hoistSailsOther = hoistSails;
                     hoistSailsStaysail = hoistSails;
 
-                    // UI elements, currently not in use to have max immersion
-                    // if (hoistSails)
-                    // {
-                    //     NotificationUi.instance.ShowNotification("Hoist Sails!");
-                    // }
-                    // else
-                    // {
-                    //     NotificationUi.instance.ShowNotification("Lower Sails!");
-                    // }   
+                    // UI elements
+                    if (AutoSailsMain.autoSailsUI.Value)
+                    {
+                        if (hoisted)
+                        {
+                            NotificationUi.instance.ShowNotification("Lower the sails!");
+                        }
+                        else
+                        {
+                            NotificationUi.instance.ShowNotification("Hoist the sails!");
+                            
+                        }
+                    }
                 }
                 if (AutoSailsMain.trimSails.Value.IsDown() && canControl)
                 {
                     trimSails = !trimSails;
-                    // UI elements, currently not in use to have max immersion
-                    // if (trimSails)
-                    // {
-                    //     NotificationUi.instance.ShowNotification("Start trimming the sails!");
-                    // }
-                    // else
-                    // {
-                    //     NotificationUi.instance.ShowNotification("Stop trimming the sails!");
-                    // }
+                    // UI elements
+                    if (AutoSailsMain.autoSailsUI.Value)
+                    {
+                        if (trimSails)
+                        {
+                            NotificationUi.instance.ShowNotification("Start trimming the sails!");
+                        }
+                        else
+                        {
+                            NotificationUi.instance.ShowNotification("Stop trimming the sails!");
+                        }
+                    }
                 }
             };
 

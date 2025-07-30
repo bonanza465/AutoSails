@@ -14,6 +14,7 @@ namespace AutoSails {
         internal static new ManualLogSource Logger;
         internal static ConfigEntry<KeyboardShortcut> hoistSails;
         internal static ConfigEntry<KeyboardShortcut> trimSails;
+        internal static ConfigEntry<bool> autoSailsUI;  
 
         public void Awake()
         {
@@ -21,6 +22,8 @@ namespace AutoSails {
             Logger = base.Logger;
             hoistSails = Config.Bind("Hotkeys", "Hoist Sails Key", new KeyboardShortcut(KeyCode.I));
             trimSails = Config.Bind("Hotkeys", "Trim Sails Key", new KeyboardShortcut(KeyCode.J));
+            autoSailsUI = Config.Bind("UI", "autoSailsUI", false, "Enables or disables the AutoSails UI. Requires restarting the game.");
+
 
             //PATCHES INFO
             Harmony harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
