@@ -1,3 +1,8 @@
+## [1.2.2] - 2025-07-31
+
+### Fixed 
+- Hoisted status is now determined based on the status of the hoist rope length instead set if hoisted by mod. This enables trim functionality to work correct even if sails are hoisted by player. 
+
 ## [1.2.1] - 2025-07-30
 
 ### Fixed 

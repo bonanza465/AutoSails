@@ -33,7 +33,7 @@ namespace AutoSails
 
         public bool trimSails = false; // This is used to determine if the sails should be trimmed or not
         public bool hoisted = false; // This is used to determine if the sails are hoisted or not
-
+        public bool hoistedTrimm= false; // This is used to determine if the sails are hoisted or not
         // private string sailName;
         private float hoistingSpeed = 0.005f; // Speed at which the sails are hoisted
         private float trimmingSpeed = 0.0005f; // Speed at which the sails are hoisted
@@ -209,6 +209,7 @@ namespace AutoSails
             {
                 canControl = false;
             }
+            
 
         }
         private void Update()
@@ -218,23 +219,53 @@ namespace AutoSails
             if (!sail || !hoistWinch || !hoistButton) return;
 
             // Overlays for debug
-            // if (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked())
-            // {
-            //     hoistButton.description = "";
-            //     hoistButton.description += $"\n Sail: {sail}";
-            //     hoistButton.description += $"\n hoistWinch: {hoistWinch}";
-            //     hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
-            //     hoistButton.description += $"\n canControl: {canControl}";
-            //     hoistButton.description += $"\n Sail name: {sail.sailName}";
-            //     hoistButton.description += $"\n squareSail: {sail.squareSail}";
-            //     hoistButton.description += $"\n junkType: {sail.junkType}";
-            //     hoistButton.description += $"\n SailCategory: {sail.category}";
-            //     hoistButton.description += $"\n reverseReefing: {reverseReefing}";
-            // }
+            if (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked())
+            {
+                hoistButton.description = "";
+                // hoistButton.description += $"\n Sail: {sail}";
+                // hoistButton.description += $"\n hoistWinch: {hoistWinch}";
+                // hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
+                // hoistButton.description += $"\n canControl: {canControl}";
+                // hoistButton.description += $"\n Sail name: {sail.sailName}";
+                // hoistButton.description += $"\n squareSail: {sail.squareSail}";
+                // hoistButton.description += $"\n junkType: {sail.junkType}";
+                // // hoistButton.description += $"\n SailCategory: {sail.category}";
+                // hoistButton.description += $"\n reverseReefing: {reverseReefing}";
+                // hoistButton.description += $"\n hoisted: {hoisted}";
+                // hoistButton.description += $"\n hoistSails: {hoistSails}";
+                // hoistButton.description += $"\n currentLength: {hoistButton.rope.currentLength}";
+                // hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
+                // hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
+                // hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
+                // hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
+                // hoistButton.description += $"\n {hoisted}";
+                // hoistButton.description += $"\n {reverseReefing}";
+                // hoistButton.description += $"\n {hoistButton.rope.currentLength}";
+                
+                 
+                
+            }
             if (hoistSails)
             {
                 PerformHoist(reverseReefing ^ hoisted); // XOR to determine direction
             }
+            else if ( // if this is true sail is fully hoisted
+                (reverseReefing && hoistButton.rope.currentLength < 1)
+                ||
+                (!reverseReefing && hoistButton.rope.currentLength > 0)
+            )
+            {
+                hoisted = true;
+            }
+            else if ( // if this is false sail is fully furled
+                (!reverseReefing && hoistButton.rope.currentLength == 0)
+                ||
+                (reverseReefing && hoistButton.rope.currentLength == 1)
+            )
+            {
+                hoisted = false;
+            }
+
 
             // Overlays for debug
             // foreach (GPButtonRopeWinch winchButton in angleButtons)
@@ -251,7 +282,7 @@ namespace AutoSails
             //     winchButton.description += $"\n AngleStandardDeviation: {AngleStandardDeviation():F4}";
             //     winchButton.description += $"\n Windangle: {Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up):F4}";
             // }
-            if (trimSails  && hoisted)
+            if (trimSails && hoisted)
             {
                 string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
                 if (sail.category is SailCategory.junk || sail.category is SailCategory.gaff || sail.category is SailCategory.lateen)
@@ -533,7 +564,6 @@ namespace AutoSails
                 hoistWinch.currentLength == 0f || hoistWinch.currentLength == 1f)
             {
                 hoistSails = false;
-                hoisted = !hoisted;
             }
         }
         private void AddAngle(float angle)
