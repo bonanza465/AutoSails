@@ -1,3 +1,8 @@
+## [1.2.3] - 2025-08-02
+
+### Fixed 
+- AutoSails prevents SailInfo from displaying the name and in/out status of halyards. All descriptions are commented out.
+
 ## [1.2.2] - 2025-07-31
 
 ### Fixed 

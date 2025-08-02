@@ -219,32 +219,32 @@ namespace AutoSails
             if (!sail || !hoistWinch || !hoistButton) return;
 
             // Overlays for debug
-            if (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked())
-            {
-                hoistButton.description = "";
-                // hoistButton.description += $"\n Sail: {sail}";
-                // hoistButton.description += $"\n hoistWinch: {hoistWinch}";
-                // hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
-                // hoistButton.description += $"\n canControl: {canControl}";
-                // hoistButton.description += $"\n Sail name: {sail.sailName}";
-                // hoistButton.description += $"\n squareSail: {sail.squareSail}";
-                // hoistButton.description += $"\n junkType: {sail.junkType}";
-                // // hoistButton.description += $"\n SailCategory: {sail.category}";
-                // hoistButton.description += $"\n reverseReefing: {reverseReefing}";
-                // hoistButton.description += $"\n hoisted: {hoisted}";
-                // hoistButton.description += $"\n hoistSails: {hoistSails}";
-                // hoistButton.description += $"\n currentLength: {hoistButton.rope.currentLength}";
-                // hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
-                // hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
-                // hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
-                // hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
-                // hoistButton.description += $"\n {hoisted}";
-                // hoistButton.description += $"\n {reverseReefing}";
-                // hoistButton.description += $"\n {hoistButton.rope.currentLength}";
+            // if (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked())
+            // {
+            //     hoistButton.description = "";
+            //     // hoistButton.description += $"\n Sail: {sail}";
+            //     // hoistButton.description += $"\n hoistWinch: {hoistWinch}";
+            //     // hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
+            //     // hoistButton.description += $"\n canControl: {canControl}";
+            //     // hoistButton.description += $"\n Sail name: {sail.sailName}";
+            //     // hoistButton.description += $"\n squareSail: {sail.squareSail}";
+            //     // hoistButton.description += $"\n junkType: {sail.junkType}";
+            //     // // hoistButton.description += $"\n SailCategory: {sail.category}";
+            //     // hoistButton.description += $"\n reverseReefing: {reverseReefing}";
+            //     // hoistButton.description += $"\n hoisted: {hoisted}";
+            //     // hoistButton.description += $"\n hoistSails: {hoistSails}";
+            //     // hoistButton.description += $"\n currentLength: {hoistButton.rope.currentLength}";
+            //     // hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
+            //     // hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
+            //     // hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
+            //     // hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
+            //     // hoistButton.description += $"\n {hoisted}";
+            //     // hoistButton.description += $"\n {reverseReefing}";
+            //     // hoistButton.description += $"\n {hoistButton.rope.currentLength}";
                 
                  
                 
-            }
+            // }
             if (hoistSails)
             {
                 PerformHoist(reverseReefing ^ hoisted); // XOR to determine direction
@@ -372,7 +372,7 @@ namespace AutoSails
                                 && (windSide == "port")
                                 )
                         {
-                            winchButton.description += "\nleft";
+                            // winchButton.description += "\nleft";
                             PrimitiveSailControl(winchButton);
                         }
                         else if (
@@ -381,7 +381,7 @@ namespace AutoSails
                             )
                         {
                             PrimitiveSailControl(winchButton);
-                            winchButton.description += "right";
+                            // winchButton.description += "right";
                         }
                         else
                         {
