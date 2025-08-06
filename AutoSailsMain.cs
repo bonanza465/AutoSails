@@ -8,6 +8,12 @@ using UnityEngine;
 
 namespace AutoSails {
 
+    public enum ResumeHoistingBehavior
+    {
+        SameDirection,
+        OppositeDirection
+    }
+
     [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
     public class AutoSailsMain : BaseUnityPlugin
     {
@@ -16,6 +22,7 @@ namespace AutoSails {
         internal static ConfigEntry<KeyboardShortcut> trimSails;
         internal static ConfigEntry<bool> autoSailsUI;
         internal static ConfigEntry<bool> autoSailsAutoJibe;
+        internal static ConfigEntry<ResumeHoistingBehavior> resumeHoisting;
         public void Awake()
         {
             // Plugin startup logic
@@ -24,6 +31,7 @@ namespace AutoSails {
             trimSails = Config.Bind("Hotkeys", "Trim Sails Key", new KeyboardShortcut(KeyCode.J));
             autoSailsUI = Config.Bind("UI", "autoSailsUI", false, "Enables or disables the AutoSails UI. Requires restarting the game.");
             autoSailsAutoJibe = Config.Bind("Feature", "autoSailsAutoJibe", true, "Enables or disables the automatic jibing. Automatic jibing makes it hard to sail on a run and might not work on all ships. Requires restarting the game.");
+            resumeHoisting = Config.Bind("Feature", "Resume Hoisting", ResumeHoistingBehavior.OppositeDirection, "Controls behavior when resuming from paused hoist. 'Same Direction' continues original movement (classic behavior), 'Opposite Direction' reverses like a garage door opener.");
 
             //PATCHES INFO
             Harmony harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
