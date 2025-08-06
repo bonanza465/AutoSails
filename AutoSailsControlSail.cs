@@ -90,6 +90,13 @@ namespace AutoSails
                 if (AutoSailsMain.trimSails.Value.IsDown() && canControl)
                 {
                     trimSails = !trimSails;
+                    
+                    var debugLevel = AutoSailsMain.debugLogging.Value;
+                    if (debugLevel == AutoSails.DebugLoggingLevel.Trim || debugLevel == AutoSails.DebugLoggingLevel.All)
+                    {
+                        AutoSailsMain.Logger.LogInfo($"Trim toggle: trimSails={trimSails}, hoisted={hoisted}");
+                    }
+                    
                     // UI elements
                     if (AutoSailsMain.autoSailsUI.Value)
                     {
@@ -207,39 +214,52 @@ namespace AutoSails
             if (!sail || !hoistWinch || !hoistButton) return;
 
             // Overlays for debug
-            // if (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked())
-            // {
-                // hoistButton.description = "";
-                // hoistButton.description += $"\n Sail: {sail}";
-                // hoistButton.description += $"\n hoistWinch: {hoistWinch}";
-                // hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
-                // hoistButton.description += $"\n canControl: {canControl}";
-                // hoistButton.description += $"\n Sail name: {sail.sailName}";
-                // hoistButton.description += $"\n squareSail: {sail.squareSail}";
-                // hoistButton.description += $"\n junkType: {sail.junkType}";
-                // hoistButton.description += $"\n SailCategory: {sail.category}";
-                // hoistButton.description += $"\n reverseReefing: {reverseReefing}";
-                // hoistButton.description += $"\n hoisted: {hoisted}";
-                // hoistButton.description += $"\n hoistState: {hoistState}";
-                // hoistButton.description += $"\n currentLength: {hoistButton.rope.currentLength}";
-                // hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
-                // hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
-                // hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
-                // hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
-                // hoistButton.description += $"\n {hoisted}";
-                // hoistButton.description += $"\n {reverseReefing}";
-                // hoistButton.description += $"\n {hoistButton.rope.currentLength}";
-                // hoistButton.description += $"\n Update() calls PerformHoist: {(hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)}";
-                // if (hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)
-                // {
-                //     hoistButton.description += $"\n PerformHoist direction: {(hoistState == HoistState.Hoisting ? "UP" : "DOWN")}";
-                // }
-                // hoistButton.description += $"\n Rope changed flag: {(hoistButton.rope?.changed ?? false)}";
-                // hoistButton.description += $"\n Last frame state was: {hoistState}";
+            var debugUILevel = AutoSailsMain.debugUI.Value;
+            if (debugUILevel != AutoSails.DebugLoggingLevel.None && (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked()))
+            {
+                hoistButton.description = "";
+                
+                // State-specific debug info
+                if (debugUILevel == AutoSails.DebugLoggingLevel.State || debugUILevel == AutoSails.DebugLoggingLevel.All)
+                {
+                    hoistButton.description += $"\n Sail: {sail}";
+                    hoistButton.description += $"\n hoistWinch: {hoistWinch}";
+                    hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
+                    hoistButton.description += $"\n canControl: {canControl}";
+                    hoistButton.description += $"\n Sail name: {sail.sailName}";
+                    hoistButton.description += $"\n squareSail: {sail.squareSail}";
+                    hoistButton.description += $"\n junkType: {sail.junkType}";
+                    // hoistButton.description += $"\n SailCategory: {sail.category}";
+                }
+                
+                // Hoist-specific debug info
+                if (debugUILevel == AutoSails.DebugLoggingLevel.Hoist || debugUILevel == AutoSails.DebugLoggingLevel.All)
+                {
+                    hoistButton.description += $"\n reverseReefing: {reverseReefing}";
+                    hoistButton.description += $"\n hoisted: {hoisted}";
+                    hoistButton.description += $"\n hoistState: {hoistState}";
+                    hoistButton.description += $"\n currentLength: {hoistButton.rope.currentLength}";
+                    hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
+                    hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
+                    hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
+                    hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
+                    hoistButton.description += $"\n {hoisted}";
+                    hoistButton.description += $"\n {reverseReefing}";
+                    hoistButton.description += $"\n {hoistButton.rope.currentLength}";
+                    hoistButton.description += $"\n Update() calls PerformHoist: {(hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)}";
+                    if (hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)
+                    {
+                        hoistButton.description += $"\n PerformHoist direction: {(hoistState == HoistState.Hoisting ? "UP" : "DOWN")}";
+                    }
+                    hoistButton.description += $"\n Rope changed flag: {(hoistButton.rope?.changed ?? false)}";
+                    hoistButton.description += $"\n Last frame state was: {hoistState}";
+                }
+                
+                // Trim-specific debug info would go here when trim UI debug is needed
                 
                  
                 
-            // }
+            }
             if (hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)
             {
                 // Match original logic: up parameter matches what original XOR logic would produce
@@ -543,6 +563,12 @@ namespace AutoSails
 
         private void PerformHoist(bool up)
         {
+            var debugLevel = AutoSailsMain.debugLogging.Value;
+            if (debugLevel == AutoSails.DebugLoggingLevel.Hoist || debugLevel == AutoSails.DebugLoggingLevel.All)
+            {
+                AutoSailsMain.Logger.LogInfo($"PerformHoist: up={up}, currentLength={hoistWinch.currentLength:F3}, state={hoistState}");
+            }
+            
             float prevLength = hoistWinch.currentLength;
             
 
@@ -565,6 +591,11 @@ namespace AutoSails
             
             if (hitUpperLimit || hitLowerLimit || stuckAtSamePosition)
             {
+                if (debugLevel == AutoSails.DebugLoggingLevel.Hoist || debugLevel == AutoSails.DebugLoggingLevel.All)
+                {
+                    string reason = hitUpperLimit ? "hit upper limit" : hitLowerLimit ? "hit lower limit" : "stuck at same position";
+                    AutoSailsMain.Logger.LogInfo($"PerformHoist: Stopping - {reason}. Final length={hoistWinch.currentLength:F3}");
+                }
                 hoistState = HoistState.Idle;
             }
         }
@@ -614,6 +645,12 @@ namespace AutoSails
         
         private void HandleHoistInput()
         {
+            var debugLevel = AutoSailsMain.debugLogging.Value;
+            if (debugLevel == AutoSails.DebugLoggingLevel.Hoist || debugLevel == AutoSails.DebugLoggingLevel.State || debugLevel == AutoSails.DebugLoggingLevel.All)
+            {
+                AutoSailsMain.Logger.LogInfo($"HandleHoistInput: Current state = {hoistState}, hoisted = {hoisted}");
+            }
+            
             switch (hoistState)
             {
                 case HoistState.Idle:
@@ -658,6 +695,11 @@ namespace AutoSails
             hoistSailsStaysail = shouldHoist;
             
             ShowHoistStateNotification();
+            
+            if (debugLevel == AutoSails.DebugLoggingLevel.Hoist || debugLevel == AutoSails.DebugLoggingLevel.State || debugLevel == AutoSails.DebugLoggingLevel.All)
+            {
+                AutoSailsMain.Logger.LogInfo($"HandleHoistInput: New state = {hoistState}");
+            }
         }
     }
 }
