@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Local development documentation
+CLAUDE.local.md
+IRONS_RECOVERY_SPEC.md
+local-docs/

@@ -262,22 +262,26 @@ namespace AutoSails
             }
             if (hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)
             {
-                // Match original logic: up parameter matches what original XOR logic would produce
-                bool up = (hoistState == HoistState.Hoisting) ? (reverseReefing ^ !hoisted) : (reverseReefing ^ hoisted);
+                // Simple garage door logic: hoisting moves toward out, lowering moves toward in
+                bool movingOut = (hoistState == HoistState.Hoisting);
+                
+                // Convert "moving out" to the correct up/down direction based on sail type
+                bool up = reverseReefing ? !movingOut : movingOut;
+                
                 PerformHoist(up);
             }
-            else if ( // if this is true sail is fully hoisted
-                (reverseReefing && hoistButton.rope.currentLength < 1)
+            else if ( // Determine hoisted status based on sail type
+                (reverseReefing && hoistButton.rope.currentLength <= 0) // reverse reefing: 0 = fully hoisted
                 ||
-                (!reverseReefing && hoistButton.rope.currentLength > 0)
+                (!reverseReefing && hoistButton.rope.currentLength > 0) // normal: > 0 = hoisted
             )
             {
                 hoisted = true;
             }
-            else if ( // if this is false sail is fully furled
-                (!reverseReefing && hoistButton.rope.currentLength == 0)
+            else if ( // Determine furled status based on sail type
+                (reverseReefing && hoistButton.rope.currentLength >= 1) // reverse reefing: 1 = furled
                 ||
-                (reverseReefing && hoistButton.rope.currentLength == 1)
+                (!reverseReefing && hoistButton.rope.currentLength <= 0) // normal: 0 = furled
             )
             {
                 hoisted = false;

@@ -22,11 +22,11 @@
     <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
     <PackageReference Include="UnityEngine.Modules" Version="2019.1.10" IncludeAssets="compile" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>C:\games\Steam\steamapps\common\Sailwind\Sailwind_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>D:\Games\Steam\steamapps\common\Sailwind\Sailwind_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="SailwindModdingHelper">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\games\Steam\steamapps\common\Sailwind\BepInEx\plugins\SailwindModdingHelper\SailwindModdingHelper.dll</HintPath>
+      <HintPath>D:\Games\Steam\steamapps\common\Sailwind\BepInEx\plugins\SailwindModdingHelper.dll</HintPath>
     </Reference>
   </ItemGroup>
   
@@ -58,15 +58,15 @@
     Encoding="UTF-8" />
   </Target>
     <Target Name="PostBuildCopy" AfterTargets="Build">
-      <Exec Command='copy /y "$(TargetPath)" "C:\games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\AutoSails.dll"'/>
-      <Exec Command='copy /y "README.md" "C:\games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\README.md"'/>
-      <Exec Command='copy /y "CHANGELOG.md" "C:\games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\CHANGELOG.md"'/>
-      <Exec Command='copy /y "manifest.json" "C:\games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\manifest.json"'/>
-      <Exec Command='copy /y "icon.png" "C:\games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\icon.png"'/>
+      <Exec Command='copy /y "$(TargetPath)" "D:\Games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\AutoSails.dll"'/>
+      <Exec Command='copy /y "README.md" "D:\Games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\README.md"'/>
+      <Exec Command='copy /y "CHANGELOG.md" "D:\Games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\CHANGELOG.md"'/>
+      <Exec Command='copy /y "manifest.json" "D:\Games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\manifest.json"'/>
+      <Exec Command='copy /y "icon.png" "D:\Games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails\icon.png"'/>
     </Target>
     <Target Name="PackageModZip" AfterTargets="Build">
     <PropertyGroup>
-      <ModOutputDir>"C:\games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails"</ModOutputDir>
+      <ModOutputDir>"D:\Games\Steam\steamapps\common\Sailwind\BepInEx\plugins\AutoSails"</ModOutputDir>
       <ZipOutputDir>$(ProjectDir)dist</ZipOutputDir>
       <ZipFileName>$(Product)-$(Version).zip</ZipFileName>
     </PropertyGroup>

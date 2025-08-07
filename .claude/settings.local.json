@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" pr view 1 --comments)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" pr view 1)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" api repos/bonanza465/AutoSails/pulls/1/reviews)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" api repos/bonanza465/AutoSails/pulls/1/comments)",
+      "Bash(git reset:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": []
+  }
+}
