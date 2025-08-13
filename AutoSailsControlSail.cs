@@ -9,14 +9,8 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace AutoSails
 {
-    public enum HoistState
-    {
-        Idle,           // Not moving
-        Hoisting,       // Moving up
-        Lowering,       // Moving down
-        PausedHoisting, // Paused while hoisting
-        PausedLowering  // Paused while lowering
-    }
+    public enum HoistDirection { Set, Furl }
+    public enum RopeOperation { Pull, Release }
 
     public class AutoSailsControlSail : MonoBehaviour
     {
@@ -24,7 +18,6 @@ namespace AutoSails
         private Sail sail;
         private RopeController hoistWinch;
         private GPButtonRopeWinch hoistButton;
-        // Changed from [] to new List<T>() - couldn't get [] syntax to build despite LangVersion=latest
         private List<GPButtonRopeWinch> angleButtons = new List<GPButtonRopeWinch>();
         private Queue<float> sailAngles = new Queue<float>();
         private const int maxSailAngles = 50;
@@ -33,7 +26,7 @@ namespace AutoSails
         private PurchasableBoat boat;
         // private Sail sailComponent;
         // private GPButtonRopeWinch ropeWinch;
-        public HoistState hoistState = HoistState.Idle; // Current hoisting state for interruptible control
+        public bool hoistSails = false; // This is used to determine if the sails should be hoisted or not
         public bool hoistSailsSquare = false;
         public bool hoistSailsLateen = false;
         public bool hoistSailsJunk = false;
@@ -50,6 +43,7 @@ namespace AutoSails
                                                // float hoistSign = -1;  // This is used to determine the direction of the hoist, depending on the sail type
                                                //TODO on some ships, the hoist Sign calculation does not work properly. Why?
         private bool reverseReefing = false;
+        private HoistDirection? nextHoistDirection = null; // Direction for next hoist operation (set on first use)
         private float trimDirection = -1f; // This is used to determine the direction of the trim
         private float oldEfficiency = 1f;
         private int i = 0;
@@ -85,18 +79,61 @@ namespace AutoSails
             {
                 if (AutoSailsMain.hoistSails.Value.IsDown() && canControl)
                 {
-                    HandleHoistInput();
+                    // Initialize direction on first use based on current sail state
+                    if (!nextHoistDirection.HasValue)
+                    {
+                        // Simple logic: if sail is currently set (hoisted), we want to furl it. If furled, we want to set it.
+                        nextHoistDirection = hoisted ? HoistDirection.Furl : HoistDirection.Set;
+                    }
+
+                    if (hoistSails)
+                    {
+                        // Currently hoisting - interrupt and handle based on resume behavior
+                        if (AutoSailsMain.resumeHoisting.Value == ResumeHoistingBehavior.OppositeDirection)
+                        {
+                            nextHoistDirection = (nextHoistDirection == HoistDirection.Set) ? HoistDirection.Furl : HoistDirection.Set;
+                        }
+                        // SameDirection mode: keep nextHoistDirection unchanged
+                        hoistSails = false;
+                        
+                        // UI element for interrupting
+                        if (AutoSailsMain.autoSailsUI.Value)
+                        {
+                            string message = GetNotificationMessage(AutoSailsMain.notificationStyle.Value, "pause");
+                            if (message != null)
+                            {
+                                NotificationUi.instance.ShowNotification(message);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Start hoisting in determined direction
+                        hoistSails = true;
+                        
+                        // UI elements for starting
+                        if (AutoSailsMain.autoSailsUI.Value)
+                        {
+                            string action = (nextHoistDirection == HoistDirection.Set) ? "set" : "furl";
+                            string message = GetNotificationMessage(AutoSailsMain.notificationStyle.Value, action);
+                            if (message != null)
+                            {
+                                NotificationUi.instance.ShowNotification(message);
+                            }
+                        }
+                    }
+
+                    // for simplification, all sails use the same hotkey
+                    hoistSailsSquare = hoistSails;
+                    hoistSailsLateen = hoistSails;
+                    hoistSailsJunk = hoistSails;
+                    hoistSailsGaff = hoistSails;
+                    hoistSailsOther = hoistSails;
+                    hoistSailsStaysail = hoistSails;
                 }
                 if (AutoSailsMain.trimSails.Value.IsDown() && canControl)
                 {
                     trimSails = !trimSails;
-                    
-                    var debugLevel = AutoSailsMain.debugLogging.Value;
-                    if (debugLevel == AutoSails.DebugLoggingLevel.Trim || debugLevel == AutoSails.DebugLoggingLevel.All)
-                    {
-                        AutoSailsMain.Logger.LogInfo($"Trim toggle: trimSails={trimSails}, hoisted={hoisted}");
-                    }
-                    
                     // UI elements
                     if (AutoSailsMain.autoSailsUI.Value)
                     {
@@ -214,74 +251,51 @@ namespace AutoSails
             if (!sail || !hoistWinch || !hoistButton) return;
 
             // Overlays for debug
-            var debugUILevel = AutoSailsMain.debugUI.Value;
-            if (debugUILevel != AutoSails.DebugLoggingLevel.None && (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked()))
+            if (AutoSailsMain.showDebugInfo.Value && (hoistButton.IsLookedAt() || hoistButton.IsStickyClicked() || hoistButton.IsCliked()))
             {
                 hoistButton.description = "";
-                
-                // State-specific debug info
-                if (debugUILevel == AutoSails.DebugLoggingLevel.State || debugUILevel == AutoSails.DebugLoggingLevel.All)
-                {
-                    hoistButton.description += $"\n Sail: {sail}";
-                    hoistButton.description += $"\n hoistWinch: {hoistWinch}";
-                    hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
-                    hoistButton.description += $"\n canControl: {canControl}";
-                    hoistButton.description += $"\n Sail name: {sail.sailName}";
-                    hoistButton.description += $"\n squareSail: {sail.squareSail}";
-                    hoistButton.description += $"\n junkType: {sail.junkType}";
-                    // hoistButton.description += $"\n SailCategory: {sail.category}";
-                }
-                
-                // Hoist-specific debug info
-                if (debugUILevel == AutoSails.DebugLoggingLevel.Hoist || debugUILevel == AutoSails.DebugLoggingLevel.All)
-                {
-                    hoistButton.description += $"\n reverseReefing: {reverseReefing}";
-                    hoistButton.description += $"\n hoisted: {hoisted}";
-                    hoistButton.description += $"\n hoistState: {hoistState}";
-                    hoistButton.description += $"\n currentLength: {hoistButton.rope.currentLength}";
-                    hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
-                    hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
-                    hoistButton.description += !reverseReefing && hoistButton.rope.currentLength == 1;
-                    hoistButton.description += reverseReefing && hoistButton.rope.currentLength == 0;
-                    hoistButton.description += $"\n {hoisted}";
-                    hoistButton.description += $"\n {reverseReefing}";
-                    hoistButton.description += $"\n {hoistButton.rope.currentLength}";
-                    hoistButton.description += $"\n Update() calls PerformHoist: {(hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)}";
-                    if (hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)
-                    {
-                        hoistButton.description += $"\n PerformHoist direction: {(hoistState == HoistState.Hoisting ? "UP" : "DOWN")}";
-                    }
-                    hoistButton.description += $"\n Rope changed flag: {(hoistButton.rope?.changed ?? false)}";
-                    hoistButton.description += $"\n Last frame state was: {hoistState}";
-                }
-                
-                // Trim-specific debug info would go here when trim UI debug is needed
-                
-                 
-                
+                hoistButton.description += $"\n Sail: {sail}";
+                hoistButton.description += $"\n hoistWinch: {hoistWinch}";
+                hoistButton.description += $"\n angleButtons: {angleButtons.Count}";
+                hoistButton.description += $"\n canControl: {canControl}";
+                hoistButton.description += $"\n Sail name: {sail.sailName}";
+                hoistButton.description += $"\n squareSail: {sail.squareSail}";
+                hoistButton.description += $"\n junkType: {sail.junkType}";
+                hoistButton.description += $"\n SailCategory: {sail.category}";
+                hoistButton.description += $"\n reverseReefing: {reverseReefing}";
+                hoistButton.description += $"\n hoisted: {hoisted}";
+                hoistButton.description += $"\n hoistSails: {hoistSails}";
+                hoistButton.description += $"\n currentLength: {hoistButton.rope.currentLength}";
+                hoistButton.description += $"\n nextHoistDirection: {nextHoistDirection}";
             }
-            if (hoistState == HoistState.Hoisting || hoistState == HoistState.Lowering)
+            if (hoistSails)
             {
-                // Simple garage door logic: hoisting moves toward out, lowering moves toward in
-                bool movingOut = (hoistState == HoistState.Hoisting);
-                
-                // Convert "moving out" to the correct up/down direction based on sail type
-                bool up = reverseReefing ? !movingOut : movingOut;
-                
+                // Convert nextHoistDirection to rope operation using original XOR logic
+                bool up;
+                if (nextHoistDirection.Value == HoistDirection.Set)
+                {
+                    // Setting: equivalent to when hoisted=false, so up = reverseReefing
+                    up = reverseReefing;
+                }
+                else // Furl
+                {
+                    // Furling: equivalent to when hoisted=true, so up = !reverseReefing
+                    up = !reverseReefing;
+                }
                 PerformHoist(up);
             }
-            else if ( // Determine hoisted status based on sail type
-                (reverseReefing && hoistButton.rope.currentLength <= 0) // reverse reefing: 0 = fully hoisted
+            else if ( // if this is true sail is fully hoisted
+                (reverseReefing && hoistButton.rope.currentLength < 1)
                 ||
-                (!reverseReefing && hoistButton.rope.currentLength > 0) // normal: > 0 = hoisted
+                (!reverseReefing && hoistButton.rope.currentLength > 0)
             )
             {
                 hoisted = true;
             }
-            else if ( // Determine furled status based on sail type
-                (reverseReefing && hoistButton.rope.currentLength >= 1) // reverse reefing: 1 = furled
+            else if ( // if this is false sail is fully furled
+                (!reverseReefing && hoistButton.rope.currentLength == 0)
                 ||
-                (!reverseReefing && hoistButton.rope.currentLength <= 0) // normal: 0 = furled
+                (reverseReefing && hoistButton.rope.currentLength == 1)
             )
             {
                 hoisted = false;
@@ -289,20 +303,23 @@ namespace AutoSails
 
 
             // Overlays for debug
-            // foreach (GPButtonRopeWinch winchButton in angleButtons)
-            // {
-            //     string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
-            //     winchButton.description = "";
-            //     winchButton.description += $"\n SailDegree: {SailDegree()}";
-            //     winchButton.description += $"\n windSide: {windSide}";
-            //     winchButton.description += $"\n winchButton.rope.currentLength: {winchButton.rope.currentLength}";
-            //     winchButton.description += $"\n CombinedEfficiency(): {CombinedEfficiency():F2}";
-            //     winchButton.description += $"\n SailEfficiency(): {SailEfficiency():F2}";
-            //     winchButton.description += $"\n SailInefficiency(): {SailInefficiency():F2}";
-            //     winchButton.description += $"\n ApparentWind: {Vector3.SignedAngle(-boat.transform.forward, sail.apparentWind, Vector3.up)}";
-            //     winchButton.description += $"\n AngleStandardDeviation: {AngleStandardDeviation():F4}";
-            //     winchButton.description += $"\n Windangle: {Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up):F4}";
-            // }
+            if (AutoSailsMain.showDebugInfo.Value)
+            {
+                foreach (GPButtonRopeWinch winchButton in angleButtons)
+                {
+                    string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
+                    winchButton.description = "";
+                    winchButton.description += $"\n SailDegree: {SailDegree()}";
+                    winchButton.description += $"\n windSide: {windSide}";
+                    winchButton.description += $"\n winchButton.rope.currentLength: {winchButton.rope.currentLength}";
+                    winchButton.description += $"\n CombinedEfficiency(): {CombinedEfficiency():F2}";
+                    winchButton.description += $"\n SailEfficiency(): {SailEfficiency():F2}";
+                    winchButton.description += $"\n SailInefficiency(): {SailInefficiency():F2}";
+                    winchButton.description += $"\n ApparentWind: {Vector3.SignedAngle(-boat.transform.forward, sail.apparentWind, Vector3.up)}";
+                    winchButton.description += $"\n AngleStandardDeviation: {AngleStandardDeviation():F4}";
+                    winchButton.description += $"\n Windangle: {Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up):F4}";
+                }
+            }
             if (trimSails && hoisted)
             {
                 string windSide = Vector3.SignedAngle(boat.transform.forward, sail.apparentWind, Vector3.up) < 0 ? "starboard" : "port";
@@ -567,14 +584,7 @@ namespace AutoSails
 
         private void PerformHoist(bool up)
         {
-            var debugLevel = AutoSailsMain.debugLogging.Value;
-            if (debugLevel == AutoSails.DebugLoggingLevel.Hoist || debugLevel == AutoSails.DebugLoggingLevel.All)
-            {
-                AutoSailsMain.Logger.LogInfo($"PerformHoist: up={up}, currentLength={hoistWinch.currentLength:F3}, state={hoistState}");
-            }
-            
             float prevLength = hoistWinch.currentLength;
-            
 
             // Visual winch wheel rotation
             float input = up ? 25f : -25f;
@@ -588,19 +598,12 @@ namespace AutoSails
             if (hoistWinch.currentLength > 1f) hoistWinch.currentLength = 1f;
             if (hoistWinch.currentLength < 0f) hoistWinch.currentLength = 0f;
 
-            // Only stop if we've reached the limit AND can't move further
-            bool hitUpperLimit = (hoistWinch.currentLength >= 1f && up);
-            bool hitLowerLimit = (hoistWinch.currentLength <= 0f && !up);
-            bool stuckAtSamePosition = Mathf.Approximately(prevLength, hoistWinch.currentLength);
-            
-            if (hitUpperLimit || hitLowerLimit || stuckAtSamePosition)
+            if (Mathf.Approximately(prevLength, hoistWinch.currentLength) ||
+                hoistWinch.currentLength == 0f || hoistWinch.currentLength == 1f)
             {
-                if (debugLevel == AutoSails.DebugLoggingLevel.Hoist || debugLevel == AutoSails.DebugLoggingLevel.All)
-                {
-                    string reason = hitUpperLimit ? "hit upper limit" : hitLowerLimit ? "hit lower limit" : "stuck at same position";
-                    AutoSailsMain.Logger.LogInfo($"PerformHoist: Stopping - {reason}. Final length={hoistWinch.currentLength:F3}");
-                }
-                hoistState = HoistState.Idle;
+                // Flip to opposite direction for next time (automatic reversal at limits)
+                nextHoistDirection = (nextHoistDirection == HoistDirection.Set) ? HoistDirection.Furl : HoistDirection.Set;
+                hoistSails = false;
             }
         }
         private void AddAngle(float angle)
@@ -622,88 +625,87 @@ namespace AutoSails
             if (sailAngles.Count == 0) return 0f;
             return sailAngles.Average();
         }
-        
-        private void ShowHoistStateNotification()
+
+        private static string GetNotificationMessage(NotificationStyle style, string action)
         {
-            if (!AutoSailsMain.autoSailsUI.Value) return;
+            System.Random random = new System.Random();
             
-            string message = hoistState switch
+            switch (style)
             {
-                HoistState.Hoisting => GetRandomMessage(new[] { "Hoist away!", "Run up the colors!", "Set all sail!" }),
-                HoistState.Lowering => GetRandomMessage(new[] { "Strike the sails!", "Douse the sails!", "Take in sail!" }),
-                HoistState.PausedHoisting => GetRandomMessage(new[] { "Belay that!", "Avast!", "Hold fast!" }),
-                HoistState.PausedLowering => GetRandomMessage(new[] { "Belay that!", "Avast!", "As you were!" }),
-                _ => ""
-            };
-            
-            if (!string.IsNullOrEmpty(message))
-            {
-                NotificationUi.instance.ShowNotification(message);
-            }
-        }
-        
-        private string GetRandomMessage(string[] messages)
-        {
-            return messages[UnityEngine.Random.Range(0, messages.Length)];
-        }
-        
-        private void HandleHoistInput()
-        {
-            var debugLevel = AutoSailsMain.debugLogging.Value;
-            if (debugLevel == AutoSails.DebugLoggingLevel.Hoist || debugLevel == AutoSails.DebugLoggingLevel.State || debugLevel == AutoSails.DebugLoggingLevel.All)
-            {
-                AutoSailsMain.Logger.LogInfo($"HandleHoistInput: Current state = {hoistState}, hoisted = {hoisted}");
-            }
-            
-            switch (hoistState)
-            {
-                case HoistState.Idle:
-                    // Start hoisting if sails are down, lowering if sails are up
-                    hoistState = hoisted ? HoistState.Lowering : HoistState.Hoisting;
-                    break;
-                case HoistState.Hoisting:
-                    hoistState = HoistState.PausedHoisting;
-                    break;
-                case HoistState.PausedHoisting:
-                    if (AutoSailsMain.resumeHoisting.Value == AutoSails.ResumeHoistingBehavior.SameDirection)
+                case NotificationStyle.None:
+                    return null; // No message
+                    
+                case NotificationStyle.Computer:
+                    switch (action)
                     {
-                        hoistState = HoistState.Hoisting;
-                    }
-                    else
-                    {
-                        hoistState = HoistState.Lowering;
+                        case "set": return "Setting all sails";
+                        case "furl": return "Furling all sails";  
+                        case "pause": return "Sail operation paused";
                     }
                     break;
-                case HoistState.Lowering:
-                    hoistState = HoistState.PausedLowering;
-                    break;
-                case HoistState.PausedLowering:
-                    if (AutoSailsMain.resumeHoisting.Value == AutoSails.ResumeHoistingBehavior.SameDirection)
+                    
+                case NotificationStyle.ModernCaptain:
+                    switch (action)
                     {
-                        hoistState = HoistState.Lowering;
+                        case "set": 
+                            string[] setModern = { 
+                                "All hands! Set all sails!", 
+                                "Deploy all canvas!", 
+                                "Get every sail out there!",
+                                "Set all our canvas, crew!"
+                            };
+                            return setModern[random.Next(setModern.Length)];
+                        case "furl":
+                            string[] furlModern = { 
+                                "Furl all sails!", 
+                                "Bring in all canvas!",
+                                "Stow every sail!",
+                                "Take in all sails, now!"
+                            };
+                            return furlModern[random.Next(furlModern.Length)];
+                        case "pause":
+                            string[] pauseModern = { 
+                                "Belay that order!", 
+                                "Hold fast on the sails!",
+                                "Stop work on the canvas!",
+                                "Pause sail operations!"
+                            };
+                            return pauseModern[random.Next(pauseModern.Length)];
                     }
-                    else
+                    break;
+                    
+                case NotificationStyle.HistoricalCaptain:
+                    switch (action)
                     {
-                        hoistState = HoistState.Hoisting;
+                        case "set":
+                            string[] setHistorical = { 
+                                "All hands aloft! Make sail!", 
+                                "Loose and set all canvas!",
+                                "Bear a hand and set every sail!",
+                                "Shake out all reefs and make sail!"
+                            };
+                            return setHistorical[random.Next(setHistorical.Length)];
+                        case "furl":
+                            string[] furlHistorical = { 
+                                "Hand the canvas! Strike all sail!", 
+                                "Clew up and furl all canvas!",
+                                "Take in every sail!",
+                                "Douse all canvas, lads!"
+                            };
+                            return furlHistorical[random.Next(furlHistorical.Length)];
+                        case "pause":
+                            string[] pauseHistorical = { 
+                                "Avast! Belay that last!", 
+                                "Hold fast, men!",
+                                "Stay your hand on the canvas!",
+                                "Vast heaving!"
+                            };
+                            return pauseHistorical[random.Next(pauseHistorical.Length)];
                     }
                     break;
             }
             
-            // for simplification, all sails use the same hotkey
-            bool shouldHoist = (hoistState == HoistState.Hoisting || hoistState == HoistState.PausedHoisting);
-            hoistSailsSquare = shouldHoist;
-            hoistSailsLateen = shouldHoist;
-            hoistSailsJunk = shouldHoist;
-            hoistSailsGaff = shouldHoist;
-            hoistSailsOther = shouldHoist;
-            hoistSailsStaysail = shouldHoist;
-            
-            ShowHoistStateNotification();
-            
-            if (debugLevel == AutoSails.DebugLoggingLevel.Hoist || debugLevel == AutoSails.DebugLoggingLevel.State || debugLevel == AutoSails.DebugLoggingLevel.All)
-            {
-                AutoSailsMain.Logger.LogInfo($"HandleHoistInput: New state = {hoistState}");
-            }
+            return null; // No default message
         }
     }
 }
